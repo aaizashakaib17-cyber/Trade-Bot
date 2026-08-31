@@ -10,7 +10,7 @@ from google import genai
 st.set_page_config(page_title="Trade-Bot", layout="wide")
 
 # To add a logo later, upload your image file and uncomment the line below:
-# st.logo("Gemini_Generated_Image_plxvuplxvuplxvup.jpeg")
+st.logo("Gemini_Generated_Image_plxvuplxvuplxvup.jpeg")
 
 # Load environment variables
 load_dotenv()
