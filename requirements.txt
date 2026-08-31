@@ -1,6 +1,3 @@
 streamlit
 google-genai
-alpaca-trade-api
-urllib3
 requests
-python-dotenv
