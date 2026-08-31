@@ -1,1 +1,1 @@
-# Trade-Bot
+# ai-trade-bot
