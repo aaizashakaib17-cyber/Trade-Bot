@@ -12,19 +12,22 @@ st.set_page_config(page_title="Trade-Bot", layout="wide")
 # Add your uploaded logo here
 st.logo("Gemini_Generated_Image_plxvuplxvuplxvup.jpeg")
 
-# Simple Password Gate
+# Simple Email Sign-In Gate
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
+    st.session_state.user_email = ""
 
 if not st.session_state.authenticated:
-    st.subheader("Please Sign In")
-    password = st.text_input("Enter Password", type="password")
-    if st.button("Login"):
-        if password == "your_secure_password":  # Change this to your password
+    st.subheader("Sign In to Trade-Bot")
+    email_input = st.text_input("Enter your Email Address")
+    
+    if st.button("Continue"):
+        if "@" in email_input and "." in email_input:
             st.session_state.authenticated = True
+            st.session_state.user_email = email_input
             st.rerun()
         else:
-            st.error("Incorrect password")
+            st.error("Please enter a valid email address.")
     st.stop()
 
 # Load environment variables
@@ -53,7 +56,7 @@ if GEMINI_API_KEY:
 
 # App Header
 st.title("Trade-Bot: AI Trading Assistant")
-st.markdown("Powered by Google Gemini AI & Alpaca Paper Trading")
+st.markdown(f"Welcome, **{st.session_state.user_email}** | Powered by Google Gemini AI & Alpaca Paper Trading")
 
 # Sidebar Controls
 st.sidebar.markdown("### Quick Controls")
