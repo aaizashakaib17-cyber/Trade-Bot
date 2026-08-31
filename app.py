@@ -108,7 +108,7 @@ if user_prompt := st.chat_input("Ask Gemini about market concepts or trading str
         if ai_client:
             try:
                 response = ai_client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-3.6-flash",
                     contents=user_prompt,
                 )
                 bot_reply = response.text
