@@ -2,68 +2,80 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import GetOptionContractsRequest, MarketOrderRequest
+from alpaca.trading.requests import MarketOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
 from google import genai
 
 # Page Configuration
-st.set_page_config(page_title="Trade-Bot AI", page_icon="📈", layout="centered")
+st.set_page_config(page_title="Trade-Bot", layout="wide")
+
+# To add a logo later, upload your image file and uncomment the line below:
+# st.logo("Gemini_Generated_Image_plxvuplxvuplxvup.jpeg")
 
 # Load environment variables
 load_dotenv()
 
+# API Keys setup
 ALPACA_API_KEY = os.getenv("ALPACA_API_KEY")
 ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Initialize Clients
-@st.cache_resource
-def get_clients():
-    t_client = TradingClient(ALPACA_API_KEY, ALPACA_SECRET_KEY, paper=True) if ALPACA_API_KEY else None
-    g_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
-    return t_client, g_client
-
-trading_client, ai_client = get_clients()
-
-# Helper Functions
-def get_account_status():
+# Initialize Alpaca Client (Paper Trading)
+trading_client = None
+if ALPACA_API_KEY and ALPACA_SECRET_KEY:
     try:
-        account = trading_client.get_account()
-        return f"Account Status: **{account.status}** | Cash Balance: **${account.cash}**"
+        trading_client = TradingClient(ALPACA_API_KEY, ALPACA_SECRET_KEY, paper=True)
     except Exception as e:
-        return f"Error: {e}"
+        st.error(f"Error initializing Alpaca client: {e}")
 
-def execute_market_trade(symbol: str, qty: int, side: str = "buy"):
+# Initialize Gemini AI Client
+ai_client = None
+if GEMINI_API_KEY:
     try:
-        order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-        order_data = MarketOrderRequest(
-            symbol=symbol.upper(),
-            qty=qty,
-            side=order_side,
-            time_in_force=TimeInForce.DAY
-        )
-        order = trading_client.submit_order(order_data)
-        return f"Order Placed! ID: `{order.id}` | Status: **{order.status}** | {side.upper()} {qty} share(s) of **{symbol.upper()}**"
+        ai_client = genai.Client(api_key=GEMINI_API_KEY)
     except Exception as e:
-        return f"Trade Failed: {e}"
+        st.error(f"Error initializing Gemini client: {e}")
 
-# UI Header
-st.title("📈 Trade-Bot: AI Trading Assistant")
-st.caption("Powered by Google Gemini AI & Alpaca Paper Trading")
+# App Header
+st.image("https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=100&auto=format&fit=crop&q=60", width=60)
+st.title("Trade-Bot: AI Trading Assistant")
+st.markdown("Powered by Google Gemini AI & Alpaca Paper Trading")
 
 # Sidebar Controls
-st.sidebar.header("Quick Controls")
+st.sidebar.markdown("### Quick Controls")
+
 if st.sidebar.button("Check Account Balance"):
-    st.sidebar.info(get_account_status())
+    if trading_client:
+        try:
+            account = trading_client.get_account()
+            st.sidebar.success(f"Account Status: {account.status} | Cash Balance: ${float(account.cash):,.2f}")
+        except Exception as e:
+            st.sidebar.error(f"Failed to fetch account: {e}")
+    else:
+        st.sidebar.error("Alpaca credentials missing.")
 
-with st.sidebar.expander("Place Paper Trade"):
-    trade_symbol = st.text_input("Ticker Symbol", "AAPL").upper()
-    trade_qty = st.number_input("Quantity", min_value=1, value=1)
-    if st.button("Submit Buy Order"):
-        res = execute_market_trade(trade_symbol, trade_qty, "buy")
-        st.sidebar.success(res)
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Place Paper Trade")
+trade_symbol = st.sidebar.text_input("Ticker Symbol", value="AAPL")
+trade_qty = st.sidebar.number_input("Quantity", min_value=1, value=1, step=1)
 
-# Interactive Chat Interface
+if st.sidebar.button("Submit Buy Order"):
+    if trading_client:
+        try:
+            market_order_data = MarketOrderRequest(
+                symbol=trade_symbol.upper(),
+                qty=trade_qty,
+                side=OrderSide.BUY,
+                time_in_force=TimeInForce.IOC
+            )
+            market_order = trading_client.submit_order(order_data=market_order_data)
+            st.sidebar.success(f"Successfully bought {trade_qty} share(s) of {trade_symbol.upper()}!")
+        except Exception as e:
+            st.sidebar.error(f"Order failed: {e}")
+    else:
+        st.sidebar.error("Alpaca client not initialized.")
+
+# Chat Interface with Gemini AI
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -79,7 +91,7 @@ if user_prompt := st.chat_input("Ask Gemini about market concepts or trading str
         if ai_client:
             try:
                 response = ai_client.models.generate_content(
-                    model="gemini-3.6-flash",
+                    model="gemini-2.5-flash",
                     contents=user_prompt,
                 )
                 bot_reply = response.text
