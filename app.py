@@ -9,8 +9,23 @@ from google import genai
 # Page Configuration
 st.set_page_config(page_title="Trade-Bot", layout="wide")
 
-# To add a logo later, upload your image file and uncomment the line below:
+# Add your uploaded logo here
 st.logo("Gemini_Generated_Image_plxvuplxvuplxvup.jpeg")
+
+# Simple Password Gate
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.subheader("Please Sign In")
+    password = st.text_input("Enter Password", type="password")
+    if st.button("Login"):
+        if password == "your_secure_password":  # Change this to your password
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Incorrect password")
+    st.stop()
 
 # Load environment variables
 load_dotenv()
@@ -37,7 +52,6 @@ if GEMINI_API_KEY:
         st.error(f"Error initializing Gemini client: {e}")
 
 # App Header
-st.image("https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=100&auto=format&fit=crop&q=60", width=60)
 st.title("Trade-Bot: AI Trading Assistant")
 st.markdown("Powered by Google Gemini AI & Alpaca Paper Trading")
 
