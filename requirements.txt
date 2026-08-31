@@ -2,3 +2,4 @@ streamlit
 google-genai
 alpaca-py
 requests
+python-dotenv
