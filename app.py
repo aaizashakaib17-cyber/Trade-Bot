@@ -8,6 +8,12 @@ from google import genai
 
 # Page Configuration
 st.set_page_config(page_title="Trade-Bot", layout="wide")
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
 
 # Add your uploaded logo here
 st.logo("Gemini_Generated_Image_plxvuplxvuplxvup.jpeg")
