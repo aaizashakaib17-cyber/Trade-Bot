@@ -47,7 +47,7 @@ def read_root():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexusTrade AI - Assistant</title>
+    <title>Trade Bot - AI Assistant</title>
     <style>
         :root {
             --bg-base: #090d16;
@@ -250,7 +250,7 @@ def read_root():
     <div class="app-container">
         <!-- Sign-In Screen -->
         <div class="auth-screen" id="authScreen">
-            <h1>NexusTrade AI</h1>
+            <h1>Trade Bot</h1>
             <p>Sign in with your email to access your autonomous trading assistant.</p>
             <div class="auth-form">
                 <input type="email" id="emailInput" placeholder="name@example.com" required>
@@ -263,12 +263,12 @@ def read_root():
             <div class="chat-header">
                 <div class="header-title">
                     <div class="status-dot"></div>
-                    AI Trading Assistant
+                    Trade Bot Assistant
                 </div>
                 <div class="user-badge" id="userEmailDisplay">user@app.com</div>
             </div>
             <div class="chat-box" id="chatBox">
-                <div class="message bot-message">Hello! I am your AI trading assistant. How can I help you check your account or manage trades today?</div>
+                <div class="message bot-message">Hello! I am your Trade Bot assistant. How can I help you check your account or manage trades today?</div>
             </div>
             <div class="chat-input-area">
                 <input type="text" id="userInput" placeholder="Ask about balance, positions, or markets..." onkeypress="handleKey(event)">
@@ -354,7 +354,7 @@ def chat_with_agent(request: ChatRequest):
 
         model = get_gemini()
         prompt = f"""
-        You are an elite AI financial trading assistant connected to an Alpaca paper trading account.
+        You are an elite Trade Bot assistant connected to an Alpaca paper trading account.
         Context information: {context}
         User message: {request.message}
         Provide a helpful, precise response to the user based on the context.
