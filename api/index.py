@@ -7,36 +7,29 @@ import google.generativeai as genai
 
 app = FastAPI()
 
-# Configure Alpaca API credentials
-ALPACA_API_KEY = os.getenv("ALPACA_API_KEY")
-ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY")
-ALPACA_BASE_URL = "https://paper-api.alpaca.markets"
+# Safe initialization functions
+def get_alpaca():
+    return tradeapi.REST(
+        os.getenv("ALPACA_API_KEY"),
+        os.getenv("ALPACA_SECRET_KEY"),
+        "https://paper-api.alpaca.markets",
+        api_version='v2'
+    )
 
-alpaca = tradeapi.REST(
-    ALPACA_API_KEY,
-    ALPACA_SECRET_KEY,
-    ALPACA_BASE_URL,
-    api_version='v2'
-)
+def get_gemini():
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    return genai.GenerativeModel("gemini-1.5-flash")
 
-# Configure Google Gemini API
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
-gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-
-# Request Models
 class ChatRequest(BaseModel):
     message: str
 
 class TradeRequest(BaseModel):
     symbol: str
     qty: int
-    side: str  # "buy" or "sell"
+    side: str
     type: str = "market"
     time_in_force: str = "gtc"
 
-
-# Root endpoint serving the chat frontend directly
 @app.get("/", response_class=HTMLResponse)
 def read_root():
     return """
@@ -72,22 +65,18 @@ def read_root():
             <button onclick="sendMessage()">Send</button>
         </div>
     </div>
-
     <script>
         async function sendMessage() {
             const inputField = document.getElementById('userInput');
             const chatBox = document.getElementById('chatBox');
             const text = inputField.value.trim();
             if (!text) return;
-
             chatBox.innerHTML += `<div class="message user-message">${text}</div>`;
             inputField.value = '';
             chatBox.scrollTop = chatBox.scrollHeight;
-
             const loadingId = 'loading-' + Date.now();
             chatBox.innerHTML += `<div class="message bot-message" id="${loadingId}">Thinking...</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
-
             try {
                 const response = await fetch('/api/chat', {
                     method: 'POST',
@@ -101,7 +90,6 @@ def read_root():
             }
             chatBox.scrollTop = chatBox.scrollHeight;
         }
-
         function handleKey(event) {
             if (event.key === 'Enter') sendMessage();
         }
@@ -110,11 +98,10 @@ def read_root():
 </html>
     """
 
-
-# Get Alpaca Account Balance
 @app.get("/api/account")
 def get_account():
     try:
+        alpaca = get_alpaca()
         account = alpaca.get_account()
         return {
             "status": "success",
@@ -126,11 +113,10 @@ def get_account():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# Place Trade Endpoint
 @app.post("/api/trade")
 def place_trade(trade: TradeRequest):
     try:
+        alpaca = get_alpaca()
         order = alpaca.submit_order(
             symbol=trade.symbol.upper(),
             qty=trade.qty,
@@ -146,31 +132,28 @@ def place_trade(trade: TradeRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
-# Chat Endpoint with Gemini & Alpaca integration
 @app.post("/api/chat")
 def chat_with_agent(request: ChatRequest):
-    user_msg = request.message.lower()
-    
-    if "balance" in user_msg or "account" in user_msg or "portfolio" in user_msg:
-        try:
-            account = alpaca.get_account()
-            context = f"Live Alpaca Account Details: Cash: ${account.cash}, Portfolio Value: ${account.portfolio_value}, Buying Power: ${account.buying_power}"
-        except Exception as e:
-            context = "Could not fetch account details due to an error."
-    else:
-        context = "General financial or assistant query."
-
-    prompt = f"""
-    You are an AI financial trading assistant connected to an Alpaca paper trading account.
-    Context information: {context}
-    User message: {request.message}
-    
-    Provide a helpful, concise response to the user.
-    """
-
     try:
-        response = gemini_model.generate_content(prompt)
+        user_msg = request.message.lower()
+        context = "General financial or assistant query."
+        
+        if "balance" in user_msg or "account" in user_msg or "portfolio" in user_msg:
+            try:
+                alpaca = get_alpaca()
+                account = alpaca.get_account()
+                context = f"Live Alpaca Account Details: Cash: ${account.cash}, Portfolio Value: ${account.portfolio_value}, Buying Power: ${account.buying_power}"
+            except Exception:
+                context = "Could not fetch account details."
+
+        model = get_gemini()
+        prompt = f"""
+        You are an AI financial trading assistant connected to an Alpaca paper trading account.
+        Context information: {context}
+        User message: {request.message}
+        Provide a helpful, concise response to the user.
+        """
+        response = model.generate_content(prompt)
         return {"reply": response.text.strip()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
