@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -39,8 +40,9 @@ class TradeRequest(BaseModel):
 # Root endpoint serving the chat frontend HTML page
 @app.get("/", response_class=HTMLResponse)
 def read_root():
-    if os.path.exists("index.html"):
-        with open("index.html", "r", encoding="utf-8") as f:
+    html_path = Path(__file__).parent.parent / "index.html"
+    if html_path.exists():
+        with open(html_path, "r", encoding="utf-8") as f:
             return f.read()
     return "<h1>AI Trade-Bot is running, but index.html was not found.</h1>"
 
@@ -109,3 +111,4 @@ def chat_with_agent(request: ChatRequest):
         return {"reply": response.text.strip()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+        
