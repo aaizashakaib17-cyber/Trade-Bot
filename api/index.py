@@ -2,19 +2,27 @@ import os
 import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import google.generativeai as genai
 
 app = FastAPI()
 
-# Grab the credentials from Vercel's environment variables
+# Grab credentials from Vercel's environment variables
 ALPACA_API_KEY = os.getenv("APCA_API_KEY_ID")
 ALPACA_API_SECRET = os.getenv("APCA_API_SECRET_KEY")
-# Using the Alpaca Paper Trading endpoint for safety during testing
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
 ALPACA_BASE_URL = "https://paper-api.alpaca.markets"
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 class TradeRequest(BaseModel):
     symbol: str
     qty: float
     side: str  # "buy" or "sell"
+
+class ChatRequest(BaseModel):
+    message: str
 
 @app.get("/")
 def read_root():
@@ -72,3 +80,26 @@ def place_trade(trade: TradeRequest):
         "status": "success",
         "order_details": response.json()
     }
+
+@app.post("/api/chat")
+def chat_with_agent(chat: ChatRequest):
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API key is not set in environment variables.")
+    
+    user_message = chat.message.lower()
+    
+    # If the user asks about account details, fetch it directly
+    if "balance" in user_message or "account" in user_message or "cash" in user_message:
+        account_info = get_alpaca_account()
+        return {
+            "reply": f"Here are your account details: Cash: ${account_info['cash']}, Portfolio Value: ${account_info['portfolio_value']}, Buying Power: ${account_info['buying_power']}"
+        }
+    
+    # Otherwise, use Gemini to respond naturally as a customer service trading bot
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        prompt = f"You are a helpful, professional customer service assistant for an automated trading app. Respond to this customer message politely and concisely: {chat.message}"
+        response = model.generate_content(prompt)
+        return {"reply": response.text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
