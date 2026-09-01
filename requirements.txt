@@ -1,4 +1,6 @@
 fastapi
 uvicorn
+pydantic
+alpaca-trade-api
 google-generativeai
-alpaca-py
+requests
