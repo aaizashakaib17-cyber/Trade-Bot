@@ -1,105 +1,111 @@
 import os
-import requests
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+import alpaca_trade_api as tradeapi
 import google.generativeai as genai
 
 app = FastAPI()
 
-# Grab credentials from Vercel's environment variables
-ALPACA_API_KEY = os.getenv("APCA_API_KEY_ID")
-ALPACA_API_SECRET = os.getenv("APCA_API_SECRET_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
+# Configure Alpaca API credentials
+ALPACA_API_KEY = os.getenv("ALPACA_API_KEY")
+ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY")
 ALPACA_BASE_URL = "https://paper-api.alpaca.markets"
 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+alpaca = tradeapi.REST(
+    ALPACA_API_KEY,
+    ALPACA_SECRET_KEY,
+    ALPACA_BASE_URL,
+    api_version='v2'
+)
 
-class TradeRequest(BaseModel):
-    symbol: str
-    qty: float
-    side: str  # "buy" or "sell"
+# Configure Google Gemini API
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
+gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
+# Request Models
 class ChatRequest(BaseModel):
     message: str
 
-@app.get("/")
+class TradeRequest(BaseModel):
+    symbol: str
+    qty: int
+    side: str  # "buy" or "sell"
+    type: str = "market"
+    time_in_force: str = "gtc"
+
+
+# Root endpoint serving the chat frontend HTML page
+@app.get("/", response_class=HTMLResponse)
 def read_root():
-    return {"message": "AI Trade-Bot is running on Vercel!"}
+    if os.path.exists("index.html"):
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h1>AI Trade-Bot is running, but index.html was not found.</h1>"
 
+
+# Get Alpaca Account Balance
 @app.get("/api/account")
-def get_alpaca_account():
-    if not ALPACA_API_KEY or not ALPACA_API_SECRET:
-        raise HTTPException(status_code=500, detail="Alpaca API keys are not set in environment variables.")
-    
-    headers = {
-        "APCA-API-KEY-ID": ALPACA_API_KEY,
-        "APCA-API-SECRET-KEY": ALPACA_API_SECRET
-    }
-    
-    response = requests.get(f"{ALPACA_BASE_URL}/v2/account", headers=headers)
-    
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json())
-        
-    account_data = response.json()
-    return {
-        "status": "success",
-        "cash": account_data.get("cash"),
-        "portfolio_value": account_data.get("portfolio_value"),
-        "buying_power": account_data.get("buying_power"),
-        "currency": account_data.get("currency")
-    }
+def get_account():
+    try:
+        account = alpaca.get_account()
+        return {
+            "status": "success",
+            "cash": account.cash,
+            "portfolio_value": account.portfolio_value,
+            "buying_power": account.buying_power,
+            "currency": account.currency
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+
+# Place Trade Endpoint
 @app.post("/api/trade")
 def place_trade(trade: TradeRequest):
-    if not ALPACA_API_KEY or not ALPACA_API_SECRET:
-        raise HTTPException(status_code=500, detail="Alpaca API keys are not set in environment variables.")
-    
-    headers = {
-        "APCA-API-KEY-ID": ALPACA_API_KEY,
-        "APCA-API-SECRET-KEY": ALPACA_API_SECRET,
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "symbol": trade.symbol.upper(),
-        "qty": trade.qty,
-        "side": trade.side.lower(),
-        "type": "market",
-        "time_in_force": "gtc"
-    }
-    
-    response = requests.post(f"{ALPACA_BASE_URL}/v2/orders", json=payload, headers=headers)
-    
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json())
-        
-    return {
-        "status": "success",
-        "order_details": response.json()
-    }
-
-@app.post("/api/chat")
-def chat_with_agent(chat: ChatRequest):
-    if not GEMINI_API_KEY:
-        raise HTTPException(status_code=500, detail="Gemini API key is not set in environment variables.")
-    
-    user_message = chat.message.lower()
-    
-    # If the user asks about account details, fetch it directly
-    if "balance" in user_message or "account" in user_message or "cash" in user_message:
-        account_info = get_alpaca_account()
-        return {
-            "reply": f"Here are your account details: Cash: ${account_info['cash']}, Portfolio Value: ${account_info['portfolio_value']}, Buying Power: ${account_info['buying_power']}"
-        }
-    
-    # Otherwise, use Gemini to respond naturally as a customer service trading bot
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        prompt = f"You are a helpful, professional customer service assistant for an automated trading app. Respond to this customer message politely and concisely: {chat.message}"
-        response = model.generate_content(prompt)
-        return {"reply": response.text}
+        order = alpaca.submit_order(
+            symbol=trade.symbol.upper(),
+            qty=trade.qty,
+            side=trade.side.lower(),
+            type=trade.type.lower(),
+            time_in_force=trade.time_in_force.lower()
+        )
+        return {
+            "status": "success",
+            "message": f"Successfully placed {trade.side} order for {trade.qty} shares of {trade.symbol.upper()}",
+            "order_id": order.id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Chat Endpoint with Gemini & Alpaca integration
+@app.post("/api/chat")
+def chat_with_agent(request: ChatRequest):
+    user_msg = request.message.lower()
+    
+    # Check if user is asking for account balances
+    if "balance" in user_msg or "account" in user_msg or "portfolio" in user_msg:
+        try:
+            account = alpaca.get_account()
+            context = f"Live Alpaca Account Details: Cash: ${account.cash}, Portfolio Value: ${account.portfolio_value}, Buying Power: ${account.buying_power}"
+        except Exception as e:
+            context = "Could not fetch account details due to an error."
+    else:
+        context = "General financial or assistant query."
+
+    prompt = f"""
+    You are an AI financial trading assistant connected to an Alpaca paper trading account.
+    Context information: {context}
+    User message: {request.message}
+    
+    Provide a helpful, concise response to the user.
+    """
+
+    try:
+        response = gemini_model.generate_content(prompt)
+        return {"reply": response.text.strip()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
