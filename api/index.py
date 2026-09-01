@@ -1,24 +1,32 @@
 import os
+import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-import alpaca_trade_api as tradeapi
 import google.generativeai as genai
 
 app = FastAPI()
 
-# Safe initialization functions
-def get_alpaca():
-    return tradeapi.REST(
-        os.getenv("ALPACA_API_KEY"),
-        os.getenv("ALPACA_SECRET_KEY"),
-        "https://paper-api.alpaca.markets",
-        api_version='v2'
-    )
-
 def get_gemini():
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     return genai.GenerativeModel("gemini-3.6-flash")
+
+def fetch_alpaca_account():
+    api_key = os.getenv("ALPACA_API_KEY")
+    secret_key = os.getenv("ALPACA_SECRET_KEY")
+    
+    headers = {
+        "APCA-API-KEY-ID": api_key,
+        "APCA-API-SECRET-KEY": secret_key
+    }
+    
+    url = "https://paper-api.alpaca.markets/v2/account"
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code != 200:
+        raise Exception(f"Alpaca API Error: {response.status_code} - {response.text}")
+        
+    return response.json()
 
 class ChatRequest(BaseModel):
     message: str
@@ -102,36 +110,16 @@ def read_root():
 @app.get("/api/account")
 def get_account():
     try:
-        alpaca = get_alpaca()
-        account = alpaca.get_account()
+        account = fetch_alpaca_account()
         return {
             "status": "success",
-            "cash": account.cash,
-            "portfolio_value": account.portfolio_value,
-            "buying_power": account.buying_power,
-            "currency": account.currency
+            "cash": account.get("cash"),
+            "portfolio_value": account.get("portfolio_value"),
+            "buying_power": account.get("buying_power"),
+            "currency": account.get("currency")
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/trade")
-def place_trade(trade: TradeRequest):
-    try:
-        alpaca = get_alpaca()
-        order = alpaca.submit_order(
-            symbol=trade.symbol.upper(),
-            qty=trade.qty,
-            side=trade.side.lower(),
-            type=trade.type.lower(),
-            time_in_force=trade.time_in_force.lower()
-        )
-        return {
-            "status": "success",
-            "message": f"Successfully placed {trade.side} order for {trade.qty} shares of {trade.symbol.upper()}",
-            "order_id": order.id
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/chat")
 def chat_with_agent(request: ChatRequest):
@@ -139,20 +127,19 @@ def chat_with_agent(request: ChatRequest):
         user_msg = request.message.lower()
         context = "General financial or assistant query."
         
-        if "balance" in user_msg or "account" in user_msg or "portfolio" in user_msg:
+        if "balance" in user_msg or "account" in user_msg or "portfolio" in user_msg or "value" in user_msg:
             try:
-                alpaca = get_alpaca()
-                account = alpaca.get_account()
-                context = f"Live Alpaca Account Details: Cash: ${account.cash}, Portfolio Value: ${account.portfolio_value}, Buying Power: ${account.buying_power}"
-            except Exception:
-                context = "Could not fetch account details."
+                account = fetch_alpaca_account()
+                context = f"Live Alpaca Account Details: Cash: ${account.get('cash')}, Portfolio Value: ${account.get('portfolio_value')}, Buying Power: ${account.get('buying_power')}"
+            except Exception as e:
+                context = f"Could not fetch account details due to: {str(e)}"
 
         model = get_gemini()
         prompt = f"""
         You are an AI financial trading assistant connected to an Alpaca paper trading account.
         Context information: {context}
         User message: {request.message}
-        Provide a helpful, concise response to the user.
+        Provide a helpful, concise response to the user based on the context.
         """
         response = model.generate_content(prompt)
         return {"reply": response.text.strip()}
