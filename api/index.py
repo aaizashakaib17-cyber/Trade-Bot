@@ -290,7 +290,7 @@ def read_root():
         <div class="auth-screen" id="authScreen">
             <div class="logo-container">
                 <!-- Replace YOUR_PICTURE_URL_HERE with your direct image link -->
-                <img src="YOUR_PICTURE_URL_HERE" alt="Trade Bot Logo">
+                <img src="Gemini_Generated_Image_fxc3eufxc3eufxc3.jpeg" alt="Trade Bot Logo">
             </div>
             <h1>Trade Bot</h1>
             <p>Sign in with your email to access your autonomous trading assistant.</p>
