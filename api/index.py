@@ -31,6 +31,7 @@ class TradeRequest(BaseModel):
     time_in_force: str = "gtc"
 
 @app.get("/", response_class=HTMLResponse)
+@app.get("/api/index.py", response_class=HTMLResponse)
 def read_root():
     return """
 <!DOCTYPE html>
