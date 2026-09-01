@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -37,14 +36,79 @@ class TradeRequest(BaseModel):
     time_in_force: str = "gtc"
 
 
-# Root endpoint serving the chat frontend HTML page
+# Root endpoint serving the chat frontend directly
 @app.get("/", response_class=HTMLResponse)
 def read_root():
-    html_path = Path(__file__).parent.parent / "index.html"
-    if html_path.exists():
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return "<h1>AI Trade-Bot is running, but index.html was not found.</h1>"
+    return """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Trade-Bot Assistant</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .chat-container { width: 100%; max-width: 600px; background: #1e293b; border-radius: 12px; display: flex; flex-direction: column; height: 80vh; box-shadow: 0 4px 20px rgba(0,0,0,0.5); overflow: hidden; }
+        .chat-header { padding: 20px; background: #334155; font-size: 1.2rem; font-weight: bold; text-align: center; }
+        .chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .message { padding: 12px 16px; border-radius: 8px; max-width: 80%; line-height: 1.4; }
+        .user-message { background: #3b82f6; align-self: flex-end; color: white; }
+        .bot-message { background: #475569; align-self: flex-start; color: #f8fafc; }
+        .chat-input-area { display: flex; padding: 15px; background: #334155; gap: 10px; }
+        input { flex: 1; padding: 12px; border-radius: 6px; border: none; background: #1e293b; color: white; font-size: 1rem; }
+        input:focus { outline: 2px solid #3b82f6; }
+        button { padding: 12px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">AI Trading Assistant</div>
+        <div class="chat-box" id="chatBox">
+            <div class="message bot-message">Hello! I am your AI trading assistant. How can I help you check your account or manage trades today?</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="userInput" placeholder="Type your question here..." onkeypress="handleKey(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        async function sendMessage() {
+            const inputField = document.getElementById('userInput');
+            const chatBox = document.getElementById('chatBox');
+            const text = inputField.value.trim();
+            if (!text) return;
+
+            chatBox.innerHTML += `<div class="message user-message">${text}</div>`;
+            inputField.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const loadingId = 'loading-' + Date.now();
+            chatBox.innerHTML += `<div class="message bot-message" id="${loadingId}">Thinking...</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+                const data = await response.json();
+                document.getElementById(loadingId).innerText = data.reply || JSON.stringify(data);
+            } catch (error) {
+                document.getElementById(loadingId).innerText = "Error connecting to backend.";
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function handleKey(event) {
+            if (event.key === 'Enter') sendMessage();
+        }
+    </script>
+</body>
+</html>
+    """
 
 
 # Get Alpaca Account Balance
@@ -88,7 +152,6 @@ def place_trade(trade: TradeRequest):
 def chat_with_agent(request: ChatRequest):
     user_msg = request.message.lower()
     
-    # Check if user is asking for account balances
     if "balance" in user_msg or "account" in user_msg or "portfolio" in user_msg:
         try:
             account = alpaca.get_account()
@@ -111,4 +174,3 @@ def chat_with_agent(request: ChatRequest):
         return {"reply": response.text.strip()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-        
