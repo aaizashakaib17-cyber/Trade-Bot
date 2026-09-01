@@ -100,6 +100,26 @@ def read_root():
             text-align: center;
         }
 
+        .logo-container {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2));
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 16px;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+            overflow: hidden;
+        }
+
+        .logo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
         .auth-screen h1 {
             font-size: 1.8rem;
             margin-bottom: 8px;
@@ -142,7 +162,25 @@ def read_root():
             font-size: 1.1rem;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+        }
+
+        .header-logo {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2));
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .header-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .status-dot {
@@ -250,6 +288,10 @@ def read_root():
     <div class="app-container">
         <!-- Sign-In Screen -->
         <div class="auth-screen" id="authScreen">
+            <div class="logo-container">
+                <!-- Replace YOUR_PICTURE_URL_HERE with your direct image link -->
+                <img src="YOUR_PICTURE_URL_HERE" alt="Trade Bot Logo">
+            </div>
             <h1>Trade Bot</h1>
             <p>Sign in with your email to access your autonomous trading assistant.</p>
             <div class="auth-form">
@@ -262,6 +304,10 @@ def read_root():
         <div class="chat-screen" id="chatScreen">
             <div class="chat-header">
                 <div class="header-title">
+                    <div class="header-logo">
+                        <!-- Replace YOUR_PICTURE_URL_HERE with your direct image link -->
+                        <img src="YOUR_PICTURE_URL_HERE" alt="Logo">
+                    </div>
                     <div class="status-dot"></div>
                     Trade Bot Assistant
                 </div>
