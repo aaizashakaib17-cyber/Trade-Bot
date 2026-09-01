@@ -3,4 +3,3 @@ uvicorn
 pydantic
 alpaca-trade-api
 google-generativeai
-requests
