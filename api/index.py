@@ -9,7 +9,7 @@ app = FastAPI()
 
 def get_gemini():
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    return genai.GenerativeModel("gemini-2.5-flash")
+    return genai.GenerativeModel("gemini-3.7-flash")
 
 def fetch_alpaca_account():
     api_key = os.getenv("ALPACA_API_KEY")
