@@ -289,7 +289,7 @@ def read_root():
         <!-- Sign-In Screen -->
         <div class="auth-screen" id="authScreen">
             <div class="logo-container">
-                <img src="https://raw.githubusercontent.com/aaizashakaib17-cyber/Trade-Bot/main/Gemini_Generated_Image_fxc3eufxc3eufxc3.jpeg" alt="Trade Bot Logo">
+                <img src="https://raw.githubusercontent.com/aaizashakaib17-cyber/Trade-Bot/main/Gemini_Generated_Image_qunbdgqunbdgqunb.jpeg" alt="Trade Bot Logo">
             </div>
             <h1>Trade Bot</h1>
             <p>Sign in with your email to access your autonomous trading assistant.</p>
@@ -304,7 +304,7 @@ def read_root():
             <div class="chat-header">
                 <div class="header-title">
                     <div class="header-logo">
-                        <img src="https://raw.githubusercontent.com/aaizashakaib17-cyber/Trade-Bot/main/Gemini_Generated_Image_fxc3eufxc3eufxc3.jpeg" alt="Logo">
+                        <img src="https://raw.githubusercontent.com/aaizashakaib17-cyber/Trade-Bot/main/Gemini_Generated_Image_qunbdgqunbdgqunb.jpeg" alt="Logo">
                     </div>
                     <div class="status-dot"></div>
                     Trade Bot Assistant
